@@ -63,9 +63,19 @@ namespace momo {
 		float z = 0.0f;
 		float w = 1.0f;
 
-		Vec3f copy() { return { x,y,z,w }; }
+		// Constructors
+		Vec3f() {};
+		~Vec3f() {};
+		Vec3f(float _x, float _y, float _z) :x(_x), y(_y), z(_z) {};
+
+		Vec3f copy() { return Vec3f(x,y,z); }
 		void print();
 		std::string to_string();
+
+		float mag();
+		float dist();
+		void normalize();
+		Vec3f get_normalized();
 
 		// vector scalar
 		void add(float _n);
@@ -78,12 +88,14 @@ namespace momo {
 		void sub(Vec3f _v);
 		void mult(Vec3f _v);
 		void div(Vec3f _v);
+		Vec3f cross(Vec3f _v);
 
 		// vector matrix
 		void mult_matrix(Matrix4x4 _mat, bool divide_everything_by_w=false);
 
 		// static
 		static Vec3f mult_matrix(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w = false);
+		static Vec3f cross(Vec3f _v1, Vec3f _v2);
 
 		// operator
 		// scalar
@@ -214,11 +226,11 @@ namespace momo {
 
 
 		// vector matrix
-		void mult_matrix(Matrix4x4 _m);
+		Triangle mult_matrix(Matrix4x4 _m, bool divide_everything_by_w = false);
 
 		// static
 		// vector matrix
-		static Triangle mult_matrix(Triangle _t, Matrix4x4 _m);
+		static Triangle mult_matrix(Triangle _t, Matrix4x4 _m, bool divide_everything_by_w = false);
 
 		// operator
 		// scalar

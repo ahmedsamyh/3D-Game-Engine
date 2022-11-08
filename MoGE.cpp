@@ -132,8 +132,6 @@ namespace momo {
 				prev_keys[i].held = keys[i].held;
 
 
-
-
 			// update
 			update();
 
@@ -197,7 +195,8 @@ namespace momo {
 		text.setString(_text);
 		text.setPosition({ _x, _y });
 		text.setFillColor(_color);
-		text.setOutlineThickness(1);
+		if (_outline_color != sf::Color::White)
+			text.setOutlineThickness(1);
 		text.setOutlineColor(_outline_color);
 
 		win.draw(text);
@@ -306,6 +305,20 @@ namespace momo {
 		o.mult_matrix(_m, divide_everything_by_w);
 		return o;
 	}
+	Vec3f momo::Vec3f::cross(Vec3f _v) {
+		Vec3f output;
+		output.x = y * _v.z - z * _v.y;
+		output.y = z * _v.x - x * _v.z;
+		output.z = x * _v.y - y * _v.x;
+		*this = output.copy();
+		return output;
+	}
+
+	Vec3f momo::Vec3f::cross(Vec3f _v1, Vec3f _v2) {
+		Vec3f output;
+		output = _v1.cross(_v2);
+		return output;
+	}
 
 	// Scalar
 	Vec3f Vec3f::operator+(const float _n){
@@ -403,6 +416,29 @@ namespace momo {
 
 	std::string Vec3f::to_string(){
 		return std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
+	}
+
+	float Vec3f::mag(){
+		return sqrtf(x*x + y*y + z*z);
+	}
+
+	float Vec3f::dist(){
+		return this->mag();
+	}
+
+	void Vec3f::normalize(){
+		float l = this->mag();
+		if (l <= 0.0f)
+			return;
+		x /= l;
+		y /= l;
+		z /= l;
+	}
+
+	Vec3f Vec3f::get_normalized(){
+		Vec3f v = this->copy();
+		v.normalize();
+		return v;
 	}
 
 	void Vec3f::add(float _n){
@@ -663,14 +699,15 @@ namespace momo {
 		std::cout << "}\n";
 	}
 
-	void Triangle::mult_matrix(Matrix4x4 _m){
+	Triangle Triangle::mult_matrix(Matrix4x4 _m, bool divide_everything_by_w){
 		for (int i = 0; i < 3; i++)
-			p[i].mult_matrix(_m);
+			p[i].mult_matrix(_m, divide_everything_by_w);
+		return this->copy();
 	}
 
-	Triangle Triangle::mult_matrix(Triangle _t, Matrix4x4 _m){
+	Triangle Triangle::mult_matrix(Triangle _t, Matrix4x4 _m, bool divide_everything_by_w){
 		Triangle t = _t.copy();
-		t.mult_matrix(_m);
+		t.mult_matrix(_m, divide_everything_by_w);
 		return t;
 	}
 
@@ -788,68 +825,54 @@ namespace momo {
 	}
 
 	// Scalar
-
 	void Triangle::add(float _n) {
 		for (int i = 0; i < 3; i++)
 			p[i].add(_n);
 	}
-
 	void Triangle::sub(float _n){
 		for (int i = 0; i < 3; i++)
 			p[i].sub(_n);
 	}
-
 	void Triangle::mult(float _n){
 		for (int i = 0; i < 3; i++)
 			p[i].mult(_n);
 	}
-
 	void Triangle::div(float _n){
 		for (int i = 0; i < 3; i++)
 			p[i].div(_n);
 	}
-
+	// Vector
 	void Triangle::add(Vec3f _v){
 		for (int i = 0; i < 3; i++)
 			p[i].add(_v);
 	}
-
 	void Triangle::sub(Vec3f _v){
 		for (int i = 0; i < 3; i++)
 			p[i].sub(_v);
 	}
-
 	void Triangle::mult(Vec3f _v){
 		for (int i = 0; i < 3; i++)
 			p[i].mult(_v);
 	}
-
 	void Triangle::div(Vec3f _v){
 		for (int i = 0; i < 3; i++)
 			p[i].div(_v);
 	}
-
+	// Triangle
 	void Triangle::add(Triangle _t){
 		for (int i = 0; i < 3; i++)
 			p[i].add(_t.p[i]);
 	}
-
 	void Triangle::sub(Triangle _t){
 		for (int i = 0; i < 3; i++)
 			p[i].sub(_t.p[i]);
 	}
-
 	void Triangle::mult(Triangle _t){
 		for (int i = 0; i < 3; i++)
 			p[i].mult(_t.p[i]);
 	}
-
 	void Triangle::div(Triangle _t){
 		for (int i = 0; i < 3; i++)
 			p[i].div(_t.p[i]);
 	}
-
-	// vector
-
-
 }
