@@ -79,76 +79,87 @@ public:
 
 		if (keys[KEY::T].pressed)
 			RAINBOW_LIGHT = !RAINBOW_LIGHT;
-		
-		// Input
-		float speed = 10.0f;
-		translater.x += ((keys[KEY::D].held) - (keys[KEY::A].held)) * speed * delta;
-		translater.y += ((keys[KEY::S].held) - (keys[KEY::W].held)) * speed * delta;
-		translater.z += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
 
 		// Reset
 		if (keys[KEY::Escape].pressed) {
 			reset_values();
 		}
 
-		// theta manipulation
-		theta_x += ((keys[KEY::K].held) - (keys[KEY::I].held)) * 5.0f * delta;
-		theta_y += ((keys[KEY::L].held) - (keys[KEY::J].held)) * 5.0f * delta;
-		theta_z += ((keys[KEY::O].held) - (keys[KEY::U].held)) * 5.0f * delta;
+		// Input
+		if (DRAW_DEBUG) {
+			float speed = 10.0f;
+			translater.x += ((keys[KEY::D].held) - (keys[KEY::A].held)) * speed * delta;
+			translater.y += ((keys[KEY::S].held) - (keys[KEY::W].held)) * speed * delta;
+			translater.z += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
 
-		// Auto Rotate
-		if (AUTO_ROTATE) {
-			theta_x += delta * 1.0f;
-			theta_y += delta * 2.0f;
-			theta_z += delta * 3.0f;
+			
+
+			// theta manipulation
+			theta_x += ((keys[KEY::K].held) - (keys[KEY::I].held)) * 5.0f * delta;
+			theta_y += ((keys[KEY::L].held) - (keys[KEY::J].held)) * 5.0f * delta;
+			theta_z += ((keys[KEY::O].held) - (keys[KEY::U].held)) * 5.0f * delta;
+
+			// Auto Rotate
+			if (AUTO_ROTATE) {
+				theta_x += delta * 1.0f;
+				theta_y += delta * 2.0f;
+				theta_z += delta * 3.0f;
+			}
+
+			// set light position to mouse position
+			light.dir.x = ((mouse.pos.x / screen_width) * 2.0f) - 1.0f;
+			light.dir.y = ((mouse.pos.y / screen_height) * 2.0f) - 1.0f;
+			light.dir.normalize();
+
+			// Rainbow light
+			/*if (RAINBOW_LIGHT) {
+				light.color.r += 1.0f; light.color.r %= 256;
+				light.color.g += 1.0f; light.color.g %= 256;
+				light.color.b += 1.0f; light.color.b %= 256;
+			}*/
 		}
-
-		// set light position to mouse position
-		light.dir.x = ((mouse.pos.x / screen_width) * 2.0f) - 1.0f;
-		light.dir.y = ((mouse.pos.y / screen_height) * 2.0f) - 1.0f;
-		light.dir.normalize();
-
-		// Rainbow light
-		/*if (RAINBOW_LIGHT) {
-			light.color.r += 1.0f; light.color.r %= 256;
-			light.color.g += 1.0f; light.color.g %= 256;
-			light.color.b += 1.0f; light.color.b %= 256;
-		}*/
 	}
 
 	void draw() override {
 		win.clear();
+		std::vector<Triangle> tri_to_raster;
+
+		// Get Rotation Matrices
 		Matrix4x4 mat_rotX = Matrix4x4::rotationX(theta_x);
 		Matrix4x4 mat_rotY = Matrix4x4::rotationY(theta_y);
 		Matrix4x4 mat_rotZ = Matrix4x4::rotationZ(theta_z);
 	
-		std::vector<Triangle> tri_to_raster;
+		// World Matrix
+		Matrix4x4 mat_trans = Matrix4x4::translation(translater.x, translater.y, translater.z);
+
+		Matrix4x4 mat_world = Matrix4x4::identity();
+		mat_world = Matrix4x4::mult(Matrix4x4::mult(mat_rotZ, mat_rotY), mat_rotX);
+		mat_world = Matrix4x4::mult(mat_world, mat_trans);
+
+		Vec3f up = { 0.f, 1.0f, 0.f };
 
 		// Draw triangles
 		for (auto& tri : mesh_obj.triangles) {
-			Triangle tri_projected, tri_translated, tri_rotated;
+			Triangle tri_projected, tri_transformed;
 
-			// Rotate
-			tri_rotated = Triangle::mult_matrix(tri, mat_rotZ).mult_matrix(mat_rotY).mult_matrix(mat_rotX);
-
-			// Translate
-			tri_translated = tri_rotated + translater;
+			tri_transformed = Triangle::mult_matrix(tri, mat_world);
 
 			// Get normal of triangle to see which one i can see
 			Vec3f normal, line1, line2;
-			line1 = tri_translated.p[1] - tri_translated.p[0];
-			line2 = tri_translated.p[2] - tri_translated.p[0];
+			line1 = tri_transformed.p[1] - tri_transformed.p[0];
+			line2 = tri_transformed.p[2] - tri_transformed.p[0];
 			normal = Vec3f::cross(line1, line2);
 			normal.normalize();
 
-			Vec3f camera_ray = tri_translated.p[0] - camera;
+			Vec3f camera_ray = tri_transformed.p[0] - camera;
 			float dot = camera_ray.dot(normal);
 
 			if (dot < 0.0f) {
 				// Project 2D -> 3D
-				tri_projected = Triangle::mult_matrix(tri_translated, mat_projection, true);
+				tri_projected = Triangle::mult_matrix(tri_transformed, mat_projection, true);
 
 				// Scale into view
+				//tri_projected *= -1.0f;
 				tri_projected += momo::Vec3f(1.0f, 1.0f, 0.0f);
 				tri_projected *= 0.5f; tri_projected *= momo::Vec3f(screen_width, screen_height, 0);
 

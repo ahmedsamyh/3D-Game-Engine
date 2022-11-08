@@ -695,6 +695,40 @@ namespace momo {
 		return matrix;
 	}
 
+	Matrix4x4 Matrix4x4::point_at(Vec3f& _pos, Vec3f& _target, Vec3f& _up){
+		// Calculate new forward direction
+		Vec3f new_forward = _pos - _target;
+		new_forward.normalize();
+
+		// Calculate new up direction
+		Vec3f a = new_forward * Vec3f::dot(_up, new_forward);
+		Vec3f new_up = _up - a;
+		new_up.normalize();
+
+		// Create new right direction
+		Vec3f new_right = Vec3f::cross(new_up, new_forward);
+
+		// Construct Matrix
+		Matrix4x4 matrix;
+		matrix.m[0][0] = new_right.x;	matrix.m[0][1] = new_right.y;	matrix.m[0][2] = new_right.z;	matrix.m[0][3] = 0.f;
+		matrix.m[1][0] = new_up.x;		matrix.m[1][1] = new_up.y;		matrix.m[1][2] = new_up.z;		matrix.m[1][3] = 0.f;
+		matrix.m[2][0] = new_forward.x; matrix.m[2][1] = new_forward.y; matrix.m[2][2] = new_forward.z; matrix.m[2][3] = 0.f;
+		matrix.m[3][0] = _pos.x;		matrix.m[3][1] = _pos.y;		matrix.m[3][2] = _pos.z;		matrix.m[3][3] = 1.f;
+		return matrix;
+	}
+
+	Matrix4x4 Matrix4x4::quick_inverse(Matrix4x4& m){
+		Matrix4x4 matrix;
+		matrix.m[0][0] = m.m[0][0]; matrix.m[0][1] = m.m[1][0]; matrix.m[0][2] = m.m[2][0]; matrix.m[0][3] = 0.0f;
+		matrix.m[1][0] = m.m[0][1]; matrix.m[1][1] = m.m[1][1]; matrix.m[1][2] = m.m[2][1]; matrix.m[1][3] = 0.0f;
+		matrix.m[2][0] = m.m[0][2]; matrix.m[2][1] = m.m[1][2]; matrix.m[2][2] = m.m[2][2]; matrix.m[2][3] = 0.0f;
+		matrix.m[3][0] = -(m.m[3][0] * matrix.m[0][0] + m.m[3][1] * matrix.m[1][0] + m.m[3][2] * matrix.m[2][0]);
+		matrix.m[3][1] = -(m.m[3][0] * matrix.m[0][1] + m.m[3][1] * matrix.m[1][1] + m.m[3][2] * matrix.m[2][1]);
+		matrix.m[3][2] = -(m.m[3][0] * matrix.m[0][2] + m.m[3][1] * matrix.m[1][2] + m.m[3][2] * matrix.m[2][2]);
+		matrix.m[3][3] = 1.0f;
+		return matrix;
+	}
+
 	// Triangle ----------------------------------------------------------------------------------------------------------------------
 
 	Triangle Triangle::copy(){

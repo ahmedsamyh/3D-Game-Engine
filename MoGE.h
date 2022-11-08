@@ -53,6 +53,10 @@ namespace momo {
 		static Matrix4x4 identity();
 
 		static Matrix4x4 translation(float _x, float _y, float _z);
+
+		static Matrix4x4 point_at(Vec3f& _pos, Vec3f& _target, Vec3f& _up);
+
+		static Matrix4x4 quick_inverse(Matrix4x4& _mat); // only for rotation/translation matrices
 	};
 
 	// Vec3f ---------------------------------------------------------------------------------------------------------------------
