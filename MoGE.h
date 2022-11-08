@@ -309,7 +309,7 @@ namespace momo {
 
 	// Mouse ---------------------------------------------------------------------------------------------------------------------
 	struct Mouse {
-		Vec3f pos;
+		Vec2f pos;
 		bool held[2];
 		bool pressed[2];
 		bool released[2];
@@ -334,6 +334,7 @@ namespace momo {
 		sf::Clock clock;
 		Mouse mouse;
 		Mouse prev_mouse;
+		bool fixed_mouse = false;
 		std::vector<Key> keys;
 		std::vector<Key> prev_keys;
 		sf::Text text;

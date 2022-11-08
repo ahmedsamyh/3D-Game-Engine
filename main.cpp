@@ -23,6 +23,8 @@ private:
 	Vec3f camera;
 	Vec3f look_dir;
 	float yaw = 0.f;
+	float not_yaw = 0.0f;
+	float sensivity = 0.5;
 	DirectionalLight light;
 	float theta_x = 0.0f;
 	float theta_y = 0.0f;
@@ -55,6 +57,7 @@ public:
 		camera = { 0.0f, 0.0f, 0.0f };
 		look_dir = { 0.0f, 0.0f, 1.0f };
 		yaw = 0.0f;
+		not_yaw = 0.f;
 		theta_x = 0.0f;
 		theta_y = 0.0f;
 		theta_z = 0.0f;
@@ -63,6 +66,9 @@ public:
 	}
 
 	void custom_init() override {
+		fixed_mouse = true;
+		win.setMouseCursorVisible(false);
+
 		mesh_obj.load_from_obj("axis.obj");
 
 		// Projection Matrix
@@ -92,10 +98,8 @@ public:
 			float speed = 10.0f;
 			// elavate
 			camera.y += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
-			// turn left and right
-			yaw += ((keys[KEY::D].held) - (keys[KEY::A].held)) * 2.0f * delta;
-
-			std::cout << yaw << "\n";
+			// strafe left and right
+			
 			
 			// forward and backward
 			Vec3f forward = look_dir * speed * delta;
@@ -130,6 +134,14 @@ public:
 				light.color.b += 1.0f; light.color.b %= 256;
 			}*/
 		}
+
+
+		// Mouse control
+		Vec2f mouse_diff = mouse.pos - prev_mouse.pos;
+
+		yaw -= mouse_diff.x * delta * sensivity;
+		not_yaw += mouse_diff.y * delta * sensivity;
+
 	}
 
 	void draw() override {
@@ -150,7 +162,7 @@ public:
 
 		Vec3f up = { 0.f, 1.0f, 0.f };
 		Vec3f target = {0,0,1};
-		Matrix4x4 mat_camera_rot = Matrix4x4::rotationY(yaw);
+		Matrix4x4 mat_camera_rot = Matrix4x4::mult(Matrix4x4::rotationY(yaw), Matrix4x4::rotationX(not_yaw));
 		look_dir = Vec3f::mult_matrix(target, mat_camera_rot);
 		target = camera + look_dir;
 		

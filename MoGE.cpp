@@ -96,6 +96,8 @@ namespace momo {
 				if (event.type == sf::Event::Closed)
 					win.close();
 			}
+			if (fixed_mouse)
+				sf::Mouse::setPosition({ screen_width / 2, screen_height / 2 }, win);
 
 			// get mouse pos
 			mouse.pos.x = sf::Mouse::getPosition(win).x;
@@ -113,8 +115,7 @@ namespace momo {
 			mouse.released[0] = prev_mouse.held[0] && !mouse.held[0];
 			mouse.released[1] = prev_mouse.held[1] && !mouse.held[1];
 
-			prev_mouse.held[0] = mouse.held[0];
-			prev_mouse.held[1] = mouse.held[1];
+			
 
 
 			// Key
@@ -137,6 +138,11 @@ namespace momo {
 
 			// draw
 			draw();
+
+
+			prev_mouse.held[0] = mouse.held[0];
+			prev_mouse.held[1] = mouse.held[1];
+			prev_mouse.pos = { (float)sf::Mouse::getPosition(win).x, (float)sf::Mouse::getPosition(win).y };
 		}
 	}
 
