@@ -21,6 +21,8 @@ private:
 	Mesh mesh_obj;
 	Matrix4x4 mat_projection;
 	Vec3f camera;
+	Vec3f look_dir;
+	float yaw = 0.f;
 	DirectionalLight light;
 	float theta_x = 0.0f;
 	float theta_y = 0.0f;
@@ -50,9 +52,9 @@ public:
 	~GameEngine3D() {};
 
 	void reset_values() {
-		translater.x = 0.0f;
-		translater.y = 0.0f;
-		translater.z = 5.0f;
+		camera = { 0.0f, 0.0f, 0.0f };
+		look_dir = { 0.0f, 0.0f, 1.0f };
+		yaw = 0.0f;
 		theta_x = 0.0f;
 		theta_y = 0.0f;
 		theta_z = 0.0f;
@@ -88,11 +90,21 @@ public:
 		// Input
 		if (DRAW_DEBUG) {
 			float speed = 10.0f;
-			translater.x += ((keys[KEY::D].held) - (keys[KEY::A].held)) * speed * delta;
-			translater.y += ((keys[KEY::S].held) - (keys[KEY::W].held)) * speed * delta;
-			translater.z += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
+			// elavate
+			camera.y += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
+			// turn left and right
+			yaw += ((keys[KEY::D].held) - (keys[KEY::A].held)) * 2.0f * delta;
 
+			std::cout << yaw << "\n";
 			
+			// forward and backward
+			Vec3f forward = look_dir * speed * delta;
+
+			if (keys[KEY::W].held)
+				camera += forward;
+			if (keys[KEY::S].held)
+				camera -= forward;
+
 
 			// theta manipulation
 			theta_x += ((keys[KEY::K].held) - (keys[KEY::I].held)) * 5.0f * delta;
@@ -130,17 +142,26 @@ public:
 		Matrix4x4 mat_rotZ = Matrix4x4::rotationZ(theta_z);
 	
 		// World Matrix
-		Matrix4x4 mat_trans = Matrix4x4::translation(translater.x, translater.y, translater.z);
+		Matrix4x4 mat_trans = Matrix4x4::translation(0.f, 0.f, 16.f);
 
 		Matrix4x4 mat_world = Matrix4x4::identity();
 		mat_world = Matrix4x4::mult(Matrix4x4::mult(mat_rotZ, mat_rotY), mat_rotX);
 		mat_world = Matrix4x4::mult(mat_world, mat_trans);
 
 		Vec3f up = { 0.f, 1.0f, 0.f };
+		Vec3f target = {0,0,1};
+		Matrix4x4 mat_camera_rot = Matrix4x4::rotationY(yaw);
+		look_dir = Vec3f::mult_matrix(target, mat_camera_rot);
+		target = camera + look_dir;
+		
+		Matrix4x4 mat_camera = Matrix4x4::point_at(camera, target, up);
+
+		// Make view matrix from camera
+		Matrix4x4 mat_view = Matrix4x4::quick_inverse(mat_camera);
 
 		// Draw triangles
 		for (auto& tri : mesh_obj.triangles) {
-			Triangle tri_projected, tri_transformed;
+			Triangle tri_projected, tri_transformed, tri_viewed;
 
 			tri_transformed = Triangle::mult_matrix(tri, mat_world);
 
@@ -155,14 +176,16 @@ public:
 			float dot = camera_ray.dot(normal);
 
 			if (dot < 0.0f) {
+
+				// Convert world space -> view space
+				tri_viewed = Triangle::mult_matrix(tri_transformed, mat_view);
+
 				// Project 2D -> 3D
-				tri_projected = Triangle::mult_matrix(tri_transformed, mat_projection, true);
+				tri_projected = Triangle::mult_matrix(tri_viewed, mat_projection, true);
 
 				// Scale into view
-				//tri_projected *= -1.0f;
 				tri_projected += momo::Vec3f(1.0f, 1.0f, 0.0f);
 				tri_projected *= 0.5f; tri_projected *= momo::Vec3f(screen_width, screen_height, 0);
-
 
 				// Calculate color
 				float color = light.dir.dot(normal);
@@ -172,9 +195,17 @@ public:
 				tri_projected.final_color.g = interpolate(light.color.g, tri_projected.color.g, 0.5) * color;
 				tri_projected.final_color.b = interpolate(light.color.b, tri_projected.color.b, 0.5) * color;
 
+
 				tri_to_raster.push_back(tri_projected);
 			}
 		}
+
+		// sort the triangles based on the z of the midpoint of the triangle
+		std::sort(tri_to_raster.begin(), tri_to_raster.end(), [](Triangle& _t1, Triangle& _t2) {
+			float mid1 = (_t1.p[0].z + _t1.p[1].z + _t1.p[2].z) / 3.0f;
+			float mid2 = (_t2.p[0].z + _t2.p[1].z + _t2.p[2].z) / 3.0f;
+			return mid1 > mid2;
+			});
 
 
 
