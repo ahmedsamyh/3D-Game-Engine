@@ -89,6 +89,7 @@ namespace momo {
 		void mult(Vec3f _v);
 		void div(Vec3f _v);
 		Vec3f cross(Vec3f _v);
+		float dot(Vec3f _v);
 
 		// vector matrix
 		void mult_matrix(Matrix4x4 _mat, bool divide_everything_by_w=false);
@@ -96,6 +97,7 @@ namespace momo {
 		// static
 		static Vec3f mult_matrix(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w = false);
 		static Vec3f cross(Vec3f _v1, Vec3f _v2);
+		static float dot(Vec3f _v1, Vec3f _v2);
 
 		// operator
 		// scalar
@@ -201,7 +203,8 @@ namespace momo {
 	// Triangle ------------------------------------------------------------------------------------------------------------------
 	struct Triangle {
 		momo::Vec3f p[3];
-		sf::Color color;
+		sf::Color color = sf::Color::White;
+		sf::Color final_color;
 
 		Triangle copy();
 		void print();

@@ -314,10 +314,18 @@ namespace momo {
 		return output;
 	}
 
+	float Vec3f::dot(Vec3f _v){
+		return (x*_v.x) + (y*_v.y) + (z*_v.z);
+	}
+
 	Vec3f momo::Vec3f::cross(Vec3f _v1, Vec3f _v2) {
 		Vec3f output;
 		output = _v1.cross(_v2);
 		return output;
+	}
+
+	float Vec3f::dot(Vec3f _v1, Vec3f _v2){
+		return _v1.dot(_v2);
 	}
 
 	// Scalar
