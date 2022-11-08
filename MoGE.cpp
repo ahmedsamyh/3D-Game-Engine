@@ -193,10 +193,12 @@ namespace momo {
 		draw_triangle_filled(_v1.x, _v1.y, _v2.x, _v2.y, _v3.x, _v3.y, _color);
 	}
 
-	void MoGE::draw_text(std::string _text, float _x, float _y, sf::Color _color) {
+	void MoGE::draw_text(std::string _text, float _x, float _y, sf::Color _color, sf::Color _outline_color) {
 		text.setString(_text);
 		text.setPosition({ _x, _y });
 		text.setFillColor(_color);
+		text.setOutlineThickness(1);
+		text.setOutlineColor(_outline_color);
 
 		win.draw(text);
 	}
@@ -282,7 +284,7 @@ namespace momo {
 		prev_rotation = rotation;
 	}
 	// Vec3f -------------------------------------------------------------------------------------------------------------------------
-	void Vec3f::mult(Matrix4x4 _m, bool divide_everything_by_w) {
+	void Vec3f::mult_matrix(Matrix4x4 _m, bool divide_everything_by_w) {
 		Vec3f v;
 		v.x = x * _m.m[0][0] + y * _m.m[1][0] + z * _m.m[2][0] + _m.m[3][0];
 		v.y = x * _m.m[0][1] + y * _m.m[1][1] + z * _m.m[2][1] + _m.m[3][1];
@@ -299,13 +301,156 @@ namespace momo {
 		z = v.z;
 		w = v.w;
 	}
-	Vec3f momo::Vec3f::mult(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w) {
+	Vec3f momo::Vec3f::mult_matrix(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w) {
 		Vec3f o = _v.copy();
-		o.mult(_m, divide_everything_by_w);
+		o.mult_matrix(_m, divide_everything_by_w);
 		return o;
 	}
+
+	// Scalar
+	Vec3f Vec3f::operator+(const float _n){
+		Vec3f v = this->copy();
+		v.add(_n);
+		return v;
+	}
+
+	Vec3f Vec3f::operator+=(const float _n){
+		this->add(_n);
+		return this->copy();
+	}
+
+	Vec3f Vec3f::operator-(const float _n){
+		Vec3f v = this->copy();
+		v.sub(_n);
+		return v;
+	}
+
+	Vec3f Vec3f::operator-=(const float _n){
+		this->sub(_n);
+		return this->copy();
+	}
+
+	Vec3f Vec3f::operator*(const float _n){
+		Vec3f v = this->copy();
+		v.mult(_n);
+		return v;
+	}
+
+	Vec3f Vec3f::operator*=(const float _n){
+		this->mult(_n);
+		return this->copy();
+	}
+
+	Vec3f Vec3f::operator/(const float _n){
+		Vec3f v = this->copy();
+		v.div(_n);
+		return v;
+	}
+
+	Vec3f Vec3f::operator/=(const float _n){
+		this->div(_n);
+		return this->copy();
+	}
+
+	// Vector
+	Vec3f Vec3f::operator+(const  Vec3f _n) {
+		Vec3f v = this->copy();
+		v.add(_n);
+		return v;
+	}
+								   
+	Vec3f Vec3f::operator+=(const Vec3f  _n) {
+		this->add(_n);
+		return this->copy();
+	}
+								   
+	Vec3f Vec3f::operator-(const  Vec3f _n) {
+		Vec3f v = this->copy();
+		v.sub(_n);
+		return v;
+	}
+								   
+	Vec3f Vec3f::operator-=(const Vec3f  _n) {
+		this->sub(_n);
+		return this->copy();
+	}
+								   
+	Vec3f Vec3f::operator*(const  Vec3f _n) {
+		Vec3f v = this->copy();
+		v.mult(_n);
+		return v;
+	}
+								   
+	Vec3f Vec3f::operator*=(const Vec3f  _n) {
+		this->mult(_n);
+		return this->copy();
+	}
+								   
+	Vec3f Vec3f::operator/(const  Vec3f _n) {
+		Vec3f v = this->copy();
+		v.div(_n);
+		return v;
+	}
+								   
+	Vec3f Vec3f::operator/=(const Vec3f  _n) {
+		this->div(_n);
+		return this->copy();
+	}
+
 	void Vec3f::print() {
 		std::cout << x << ", " << y << ", " << z << "\n";
+	}
+
+	std::string Vec3f::to_string(){
+		return std::to_string(x) + ", " + std::to_string(y) + ", " + std::to_string(z);
+	}
+
+	void Vec3f::add(float _n){
+		x += _n;
+		y += _n;
+		z += _n;
+	}
+
+	void Vec3f::sub(float _n){
+		x -= _n;
+		y -= _n;
+		z -= _n;
+	}
+
+	void Vec3f::mult(float _n){
+		x *= _n;
+		y *= _n;
+		z *= _n;
+	}
+
+	void Vec3f::div(float _n){
+		x /= _n;
+		y /= _n;
+		z /= _n;
+	}
+
+	void Vec3f::add(Vec3f _v){
+		x += _v.x;
+		y += _v.y;
+		z += _v.z;
+	}
+
+	void Vec3f::sub(Vec3f _v){
+		x -= _v.x;
+		y -= _v.y;
+		z -= _v.z;
+	}
+
+	void Vec3f::mult(Vec3f _v){
+		x *= _v.x;
+		y *= _v.y;
+		z *= _v.z;
+	}
+
+	void Vec3f::div(Vec3f _v){
+		x /= _v.x;
+		y /= _v.y;
+		z /= _v.z;
 	}
 
 	// Vec2f -------------------------------------------------------------------------------------------------------------------------
@@ -507,5 +652,204 @@ namespace momo {
 	}
 
 	// Triangle ----------------------------------------------------------------------------------------------------------------------
+
+	Triangle Triangle::copy(){
+		return {p[0], p[1], p[2]};
+	}
+
+	void Triangle::print(){
+		std::cout << "{\n";
+		for (int i = 0; i < 3; i++) p[i].print();
+		std::cout << "}\n";
+	}
+
+	void Triangle::mult_matrix(Matrix4x4 _m){
+		for (int i = 0; i < 3; i++)
+			p[i].mult_matrix(_m);
+	}
+
+	Triangle Triangle::mult_matrix(Triangle _t, Matrix4x4 _m){
+		Triangle t = _t.copy();
+		t.mult_matrix(_m);
+		return t;
+	}
+
+	// operator
+	// scalar
+	Triangle Triangle::operator+(const  float _n){
+		Triangle t = this->copy();
+		t.add(_n);
+		return t;
+	}
+	Triangle Triangle::operator+=(const float _n){
+		this->add(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator-(const  float _n){
+		Triangle t = this->copy();
+		t.sub(_n);
+		return t;
+	}
+	Triangle Triangle::operator-=(const float _n){
+		this->sub(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator*(const  float _n){
+		Triangle t = this->copy();
+		t.mult(_n);
+		return t;
+	}
+	Triangle Triangle::operator*=(const float _n){
+		this->mult(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator/(const  float _n){
+		Triangle t = this->copy();
+		t.div(_n);
+		return t;
+	}
+	Triangle Triangle::operator/=(const float _n){
+		this->div(_n);
+		return this->copy();
+	}
+	// vector
+	Triangle Triangle::operator+(const  Vec3f _n) {
+		Triangle t = this->copy();
+		t.add(_n);
+		return t;
+	}
+	Triangle Triangle::operator+=(const Vec3f _n) {
+		this->add(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator-(const  Vec3f _n) {
+		Triangle t = this->copy();
+		t.sub(_n);
+		return t;
+	}
+	Triangle Triangle::operator-=(const Vec3f _n) {
+		this->sub(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator*(const  Vec3f _n) {
+		Triangle t = this->copy();
+		t.mult(_n);
+		return t;
+	}
+	Triangle Triangle::operator*=(const Vec3f _n) {
+		this->mult(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator/(const  Vec3f _n) {
+		Triangle t = this->copy();
+		t.div(_n);
+		return t;
+	}
+	Triangle Triangle::operator/=(const Vec3f _n) {
+		this->div(_n);
+		return this->copy();
+	}
+	// triangle
+	Triangle Triangle::operator+(const  Triangle _n) {
+		Triangle t = this->copy();
+		t.add(_n);
+		return t;
+	}
+	Triangle Triangle::operator+=(const Triangle _n) {
+		this->add(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator-(const  Triangle _n) {
+		Triangle t = this->copy();
+		t.sub(_n);
+		return t;
+	}
+	Triangle Triangle::operator-=(const Triangle _n) {
+		this->sub(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator*(const  Triangle _n) {
+		Triangle t = this->copy();
+		t.mult(_n);
+		return t;
+	}
+	Triangle Triangle::operator*=(const Triangle _n) {
+		this->mult(_n);
+		return this->copy();
+	}
+	Triangle Triangle::operator/(const  Triangle _n) {
+		Triangle t = this->copy();
+		t.div(_n);
+		return t;
+	}
+	Triangle Triangle::operator/=(const Triangle _n) {
+		this->div(_n);
+		return this->copy();
+	}
+
+	// Scalar
+
+	void Triangle::add(float _n) {
+		for (int i = 0; i < 3; i++)
+			p[i].add(_n);
+	}
+
+	void Triangle::sub(float _n){
+		for (int i = 0; i < 3; i++)
+			p[i].sub(_n);
+	}
+
+	void Triangle::mult(float _n){
+		for (int i = 0; i < 3; i++)
+			p[i].mult(_n);
+	}
+
+	void Triangle::div(float _n){
+		for (int i = 0; i < 3; i++)
+			p[i].div(_n);
+	}
+
+	void Triangle::add(Vec3f _v){
+		for (int i = 0; i < 3; i++)
+			p[i].add(_v);
+	}
+
+	void Triangle::sub(Vec3f _v){
+		for (int i = 0; i < 3; i++)
+			p[i].sub(_v);
+	}
+
+	void Triangle::mult(Vec3f _v){
+		for (int i = 0; i < 3; i++)
+			p[i].mult(_v);
+	}
+
+	void Triangle::div(Vec3f _v){
+		for (int i = 0; i < 3; i++)
+			p[i].div(_v);
+	}
+
+	void Triangle::add(Triangle _t){
+		for (int i = 0; i < 3; i++)
+			p[i].add(_t.p[i]);
+	}
+
+	void Triangle::sub(Triangle _t){
+		for (int i = 0; i < 3; i++)
+			p[i].sub(_t.p[i]);
+	}
+
+	void Triangle::mult(Triangle _t){
+		for (int i = 0; i < 3; i++)
+			p[i].mult(_t.p[i]);
+	}
+
+	void Triangle::div(Triangle _t){
+		for (int i = 0; i < 3; i++)
+			p[i].div(_t.p[i]);
+	}
+
+	// vector
+
 
 }

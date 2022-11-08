@@ -65,11 +65,45 @@ namespace momo {
 
 		Vec3f copy() { return { x,y,z,w }; }
 		void print();
+		std::string to_string();
 
-		void mult(Matrix4x4 _mat, bool divide_everything_by_w=false);
+		// vector scalar
+		void add(float _n);
+		void sub(float _n);
+		void mult(float _n);
+		void div(float _n);
+
+		// vector vector
+		void add(Vec3f _v);
+		void sub(Vec3f _v);
+		void mult(Vec3f _v);
+		void div(Vec3f _v);
+
+		// vector matrix
+		void mult_matrix(Matrix4x4 _mat, bool divide_everything_by_w=false);
 
 		// static
-		static Vec3f mult(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w = false);
+		static Vec3f mult_matrix(Vec3f _v, Matrix4x4 _m, bool divide_everything_by_w = false);
+
+		// operator
+		// scalar
+		Vec3f operator + (const float _n);
+		Vec3f operator += (const float _n);
+		Vec3f operator - (const float _n);
+		Vec3f operator -= (const float _n);
+		Vec3f operator * (const float _n);
+		Vec3f operator *= (const float _n);
+		Vec3f operator / (const float _n);
+		Vec3f operator /= (const float _n);
+		// vector
+		Vec3f operator + (const  Vec3f _n);
+		Vec3f operator += (const Vec3f  _n);
+		Vec3f operator - (const  Vec3f _n);
+		Vec3f operator -= (const Vec3f  _n);
+		Vec3f operator * (const  Vec3f _n);
+		Vec3f operator *= (const Vec3f  _n);
+		Vec3f operator / (const  Vec3f _n);
+		Vec3f operator /= (const Vec3f  _n);
 	};
 
 	// Vec2f ---------------------------------------------------------------------------------------------------------------------
@@ -156,6 +190,64 @@ namespace momo {
 	struct Triangle {
 		momo::Vec3f p[3];
 		sf::Color color;
+
+		Triangle copy();
+		void print();
+
+		// vector scalar
+		void add(float _n);
+		void sub(float _n);
+		void mult(float _n);
+		void div(float _n);
+
+		// vector vector
+		void add(Vec3f _v);
+		void sub(Vec3f _v);
+		void mult(Vec3f _v);
+		void div(Vec3f _v);
+
+		// triangle
+		void add(Triangle  _t);
+		void sub(Triangle  _t);
+		void mult(Triangle _t);
+		void div(Triangle  _t);
+
+
+		// vector matrix
+		void mult_matrix(Matrix4x4 _m);
+
+		// static
+		// vector matrix
+		static Triangle mult_matrix(Triangle _t, Matrix4x4 _m);
+
+		// operator
+		// scalar
+		Triangle operator + (const	 float _n);
+		Triangle operator += (const float _n);
+		Triangle operator - (const	 float _n);
+		Triangle operator -= (const float _n);
+		Triangle operator * (const  float _n);
+		Triangle operator *= (const float _n);
+		Triangle operator / (const  float _n);
+		Triangle operator /= (const float _n);
+		// vector
+		Triangle operator + (const  Vec3f _n);
+		Triangle operator += (const Vec3f  _n);
+		Triangle operator - (const  Vec3f _n);
+		Triangle operator -= (const Vec3f  _n);
+		Triangle operator * (const  Vec3f _n);
+		Triangle operator *= (const Vec3f  _n);
+		Triangle operator / (const  Vec3f _n);
+		Triangle operator /= (const Vec3f  _n);
+		// triangle
+		Triangle operator + (const  Triangle _n);
+		Triangle operator += (const Triangle  _n);
+		Triangle operator - (const  Triangle _n);
+		Triangle operator -= (const Triangle  _n);
+		Triangle operator * (const  Triangle _n);
+		Triangle operator *= (const Triangle  _n);
+		Triangle operator / (const  Triangle _n);
+		Triangle operator /= (const Triangle  _n);
 	};
 
 	// Mesh ----------------------------------------------------------------------------------------------------------------------
@@ -282,7 +374,7 @@ namespace momo {
 		void draw_triangle_filled(float _x1, float _y1, float _x2, float _y2, float _x3, float _y3, sf::Color _color = sf::Color::White);
 		void draw_triangle_filled(Vec2f _v1, Vec2f _v2, Vec2f _v3, sf::Color _color = sf::Color::White);
 		void draw_triangle_filled(Vec3f _v1, Vec3f _v2, Vec3f _v3, sf::Color _color = sf::Color::White);
-		void draw_text(std::string _text, float _x, float _y, sf::Color _color = sf::Color::White);
+		void draw_text(std::string _text, float _x, float _y, sf::Color _color = sf::Color::White, sf::Color _outline_color = sf::Color::White);
 	};
 
 	// Texture Manager -----------------------------------------------------------------------------------------------------------
