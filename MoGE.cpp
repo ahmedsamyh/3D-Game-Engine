@@ -36,6 +36,96 @@ namespace momo {
 		return (_rad / PI) * 180;
 	}
 
+	Vec3f vector_intersect_plane(Vec3f& _plane_p, Vec3f& _plane_n, Vec3f& _line_start, Vec3f& _line_end) {
+		_plane_n.normalize();
+		float plane_dot = -Vec3f::dot(_plane_n, _plane_p);
+		float ad = Vec3f::dot(_line_start, _plane_n);
+		float bd = Vec3f::dot(_line_end, _plane_n);
+		float t = (-plane_dot - ad) / (bd - ad);
+		Vec3f line_start_to_end = _line_start - _line_end;
+		Vec3f line_to_intersect = line_start_to_end * t;
+		return _line_start + line_to_intersect;
+	}
+
+	int triangle_clip_against_plane(Vec3f _plane_p, Vec3f _plane_n, Triangle& _in_tri, Triangle& _out_tri1, Triangle& _out_tri2) {
+		// Make sure plane normal is normalized
+		_plane_n.normalize();
+		
+		// return signed shortest distance from point to plane
+		auto dist = [&](Vec3f& p) {
+			Vec3f n = p.get_normalized();
+			return (_plane_n.x * p.x + _plane_n.y * p.y + _plane_n.z * p.z - Vec3f::dot(_plane_n, _plane_p));
+		};
+
+		// create temp storage arrays to classify points either side of plane
+		// if dist sign is positive, point lies on "inside" the plane
+		Vec3f* inside_points[3]; int inside_point_count = 0;
+		Vec3f* outside_points[3]; int outside_point_count = 0;
+
+
+		// Get signed dist of each point in triangle
+		float d0 = dist(_in_tri.p[0]);
+		float d1 = dist(_in_tri.p[1]);
+		float d2 = dist(_in_tri.p[2]);
+
+		if (d0 >= 0) { inside_points[inside_point_count++] = &_in_tri.p[0]; }
+		else { outside_points[outside_point_count++] = &_in_tri.p[0]; }
+		if (d0 >= 1) { inside_points[inside_point_count++] = &_in_tri.p[1]; }
+		else { outside_points[outside_point_count++] = &_in_tri.p[1]; }
+		if (d0 >= 2) { inside_points[inside_point_count++] = &_in_tri.p[2]; }
+		else { outside_points[outside_point_count++] = &_in_tri.p[2]; }
+
+		// classify the triangle points
+
+		if (inside_point_count == 0) {
+			// all triangle points are outside plane, so reject it
+			return 0; // return nothing
+		}
+
+
+		if (inside_point_count == 3) {
+			// all triangle points are inside plane, so do nothing with it
+			_out_tri1 = _in_tri;
+			return 1; // return the same triangle
+		}
+
+		if (inside_point_count == 1 && outside_point_count == 2) {
+			// triangles should be clipped, as two points lie outside the clipping plane, return a smaller triangle
+			
+			// copy color info
+			_out_tri1.color = _in_tri.color;
+
+			// inside point is valid so keep that
+			_out_tri1.p[0] = _in_tri.p[0];
+
+			// two new points are created where the lines intersect the clipping plane
+			_out_tri1.p[1] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[0]);
+			_out_tri1.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[1]);
+
+			return 1;
+		}
+
+		if (inside_point_count == 2 && outside_point_count == 1) {
+			// create a quad
+
+			// copy color to new triangles
+			_out_tri1.color = _in_tri.color;
+			_out_tri2.color = _in_tri.color;
+
+			// first triangle
+			_out_tri1.p[0] = *inside_points[0];
+			_out_tri1.p[1] = *inside_points[1];
+			_out_tri1.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[0]);
+
+			// second triangle
+			_out_tri2.p[0] = *inside_points[0];
+			_out_tri2.p[1] = _out_tri1.p[0];
+			_out_tri2.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[1], *outside_points[0]);
+
+			return 2;
+		}
+	}
+
 	// MoGE --------------------------------------------------------------------------------------------------------------------------
 	MoGE::MoGE() {
 		tm = new TextureManager();
@@ -668,7 +758,7 @@ namespace momo {
 		mat_proj.m[1][1] = fov_rad;
 		mat_proj.m[2][2] = far / (far - near);
 		mat_proj.m[3][2] = (-far * near) / (far - near);
-		mat_proj.m[2][3] = -1.0f;
+		mat_proj.m[2][3] = 1.0f;
 		return mat_proj;
 	}
 
@@ -703,7 +793,7 @@ namespace momo {
 
 	Matrix4x4 Matrix4x4::point_at(Vec3f& _pos, Vec3f& _target, Vec3f& _up){
 		// Calculate new forward direction
-		Vec3f new_forward = _pos - _target;
+		Vec3f new_forward = _target - _pos;
 		new_forward.normalize();
 
 		// Calculate new up direction
@@ -716,11 +806,12 @@ namespace momo {
 
 		// Construct Matrix
 		Matrix4x4 matrix;
-		matrix.m[0][0] = new_right.x;	matrix.m[0][1] = new_right.y;	matrix.m[0][2] = new_right.z;	matrix.m[0][3] = 0.f;
-		matrix.m[1][0] = new_up.x;		matrix.m[1][1] = new_up.y;		matrix.m[1][2] = new_up.z;		matrix.m[1][3] = 0.f;
-		matrix.m[2][0] = new_forward.x; matrix.m[2][1] = new_forward.y; matrix.m[2][2] = new_forward.z; matrix.m[2][3] = 0.f;
-		matrix.m[3][0] = _pos.x;		matrix.m[3][1] = _pos.y;		matrix.m[3][2] = _pos.z;		matrix.m[3][3] = 1.f;
+		matrix.m[0][0] = new_right.x;	matrix.m[0][1] = new_right.y;	matrix.m[0][2] = new_right.z;	matrix.m[0][3] = 0.0f;
+		matrix.m[1][0] = new_up.x;		matrix.m[1][1] = new_up.y;		matrix.m[1][2] = new_up.z;		matrix.m[1][3] = 0.0f;
+		matrix.m[2][0] = new_forward.x;	matrix.m[2][1] = new_forward.y;	matrix.m[2][2] = new_forward.z;	matrix.m[2][3] = 0.0f;
+		matrix.m[3][0] = _pos.x;		matrix.m[3][1] = _pos.y;		matrix.m[3][2] = _pos.z;		matrix.m[3][3] = 1.0f;
 		return matrix;
+
 	}
 
 	Matrix4x4 Matrix4x4::quick_inverse(Matrix4x4& m){

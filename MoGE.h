@@ -23,7 +23,8 @@ namespace momo {
 	float deg2rad(float _deg);
 	Vec2f interpolate(Vec2f _from, Vec2f _to, float _t);
 	float interpolate(float _from, float _to, float _t);
-
+	Vec3f vector_intersect_plane(Vec3f& _plane_p, Vec3f& _plane_n, Vec3f& _line_start, Vec3f& _line_end);
+	int triangle_clip_against_plane(Vec3f _plane_p, Vec3f _plane_n, Triangle& _in_tri, Triangle& _out_tri1, Triangle& _out_tri2);
 	// Matrix --------------------------------------------------------------------------------------------------------------------
 	class Matrix4x4 {
 	public:

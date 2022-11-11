@@ -99,7 +99,7 @@ public:
 			// elavate
 			camera.y += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
 			// strafe left and right
-			
+			camera.x += ((keys[KEY::D].held) - (keys[KEY::A].held)) * speed * delta;
 			
 			// forward and backward
 			Vec3f forward = look_dir * speed * delta;
@@ -139,8 +139,8 @@ public:
 		// Mouse control
 		Vec2f mouse_diff = mouse.pos - prev_mouse.pos;
 
-		yaw -= mouse_diff.x * delta * sensivity;
-		not_yaw += mouse_diff.y * delta * sensivity;
+		yaw += mouse_diff.x * delta * sensivity;
+		//not_yaw += mouse_diff.y * delta * sensivity;
 
 	}
 
@@ -157,12 +157,12 @@ public:
 		Matrix4x4 mat_trans = Matrix4x4::translation(0.f, 0.f, 16.f);
 
 		Matrix4x4 mat_world = Matrix4x4::identity();
-		mat_world = Matrix4x4::mult(Matrix4x4::mult(mat_rotZ, mat_rotY), mat_rotX);
+		mat_world = Matrix4x4::mult(mat_rotZ, mat_rotX);
 		mat_world = Matrix4x4::mult(mat_world, mat_trans);
 
-		Vec3f up = { 0.f, 1.0f, 0.f };
+		Vec3f up = {0,1,0};
 		Vec3f target = {0,0,1};
-		Matrix4x4 mat_camera_rot = Matrix4x4::mult(Matrix4x4::rotationY(yaw), Matrix4x4::rotationX(not_yaw));
+		Matrix4x4 mat_camera_rot = Matrix4x4::rotationY(yaw);
 		look_dir = Vec3f::mult_matrix(target, mat_camera_rot);
 		target = camera + look_dir;
 		
@@ -192,32 +192,41 @@ public:
 				// Convert world space -> view space
 				tri_viewed = Triangle::mult_matrix(tri_transformed, mat_view);
 
-				// Project 2D -> 3D
-				tri_projected = Triangle::mult_matrix(tri_viewed, mat_projection, true);
+				// Clip triangles {can form 2 triangles}
+				int clipped_triangles = 0;
+				Triangle clipped[2];
+				clipped_triangles = triangle_clip_against_plane({ 0.0f, 0.0f, 2.1f }, { 0.0f, 0.0f, 1.0f }, tri_viewed, clipped[0], clipped[1]);
 
-				// Scale into view
-				tri_projected += momo::Vec3f(1.0f, 1.0f, 0.0f);
-				tri_projected *= 0.5f; tri_projected *= momo::Vec3f(screen_width, screen_height, 0);
+				for (int n = 0; n < clipped_triangles; n++) {
 
-				// Calculate color
-				float color = light.dir.dot(normal);
-				color += 1.0f;
-				color *= 0.5f;
-				tri_projected.final_color.r = interpolate(light.color.r, tri_projected.color.r, 0.5) * color;
-				tri_projected.final_color.g = interpolate(light.color.g, tri_projected.color.g, 0.5) * color;
-				tri_projected.final_color.b = interpolate(light.color.b, tri_projected.color.b, 0.5) * color;
+					// Project 2D -> 3D
+					tri_projected = Triangle::mult_matrix(clipped[n], mat_projection, true);
 
+					// Scale into view
+					tri_projected *= Vec3f(1.0f, -1.0f, 0.0f);
+					tri_projected += Vec3f(1.0f, 1.0f, 0.0f);
+					tri_projected *= 0.5f; tri_projected *= momo::Vec3f((float)screen_width, (float)screen_height, 0);
 
-				tri_to_raster.push_back(tri_projected);
+					// Calculate color
+					float color = light.dir.dot(normal);
+					color += 1.0f;
+					color *= 0.5f;
+					tri_projected.final_color.r = interpolate(light.color.r, tri_projected.color.r, 0.5) * color;
+					tri_projected.final_color.g = interpolate(light.color.g, tri_projected.color.g, 0.5) * color;
+					tri_projected.final_color.b = interpolate(light.color.b, tri_projected.color.b, 0.5) * color;
+
+					tri_to_raster.push_back(tri_projected);
+				}
 			}
 		}
 
 		// sort the triangles based on the z of the midpoint of the triangle
-		std::sort(tri_to_raster.begin(), tri_to_raster.end(), [](Triangle& _t1, Triangle& _t2) {
-			float mid1 = (_t1.p[0].z + _t1.p[1].z + _t1.p[2].z) / 3.0f;
-			float mid2 = (_t2.p[0].z + _t2.p[1].z + _t2.p[2].z) / 3.0f;
-			return mid1 > mid2;
+		std::sort(tri_to_raster.begin(), tri_to_raster.end(), [](Triangle& t1, Triangle& t2){
+				float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
+				float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
+				return z1 > z2;
 			});
+
 
 
 
@@ -227,16 +236,14 @@ public:
 			draw_triangle_filled(tri_projected.p[0], tri_projected.p[1], tri_projected.p[2], tri_projected.final_color);
 
 			// Wireframe
-			//draw_triangle(tri_projected.p[0], tri_projected.p[1], tri_projected.p[2]);
+			draw_triangle(tri_projected.p[0], tri_projected.p[1], tri_projected.p[2]);
 		}
 
 
 		// draw debug
 		if (DRAW_DEBUG) {
-			draw_text("Translation: " + translater.to_string(), 16, text.getCharacterSize() * 1, sf::Color::White, sf::Color::Black);
-			draw_text("Rotation: {" + std::to_string(momo::rad2deg(theta_x)) + ", " +
-				std::to_string(momo::rad2deg(theta_y)) + ", " +
-				std::to_string(momo::rad2deg(theta_z)) + " }", 16, text.getCharacterSize() * 2, sf::Color::White, sf::Color::Black);
+			draw_text("Camera: " + camera.to_string(), 16, text.getCharacterSize() * 1);
+			draw_text("LookDir: " + look_dir.to_string(), 16, text.getCharacterSize() * 2);
 		}
 		win.display();
 	}
