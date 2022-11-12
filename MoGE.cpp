@@ -36,93 +36,115 @@ namespace momo {
 		return (_rad / PI) * 180;
 	}
 
-	Vec3f vector_intersect_plane(Vec3f& _plane_p, Vec3f& _plane_n, Vec3f& _line_start, Vec3f& _line_end) {
-		_plane_n.normalize();
-		float plane_dot = -Vec3f::dot(_plane_n, _plane_p);
-		float ad = Vec3f::dot(_line_start, _plane_n);
-		float bd = Vec3f::dot(_line_end, _plane_n);
-		float t = (-plane_dot - ad) / (bd - ad);
-		Vec3f line_start_to_end = _line_start - _line_end;
-		Vec3f line_to_intersect = line_start_to_end * t;
-		return _line_start + line_to_intersect;
+	Vec3f vector_intersect_plane(Vec3f& plane_p, Vec3f& plane_n, Vec3f& lineStart, Vec3f& lineEnd)
+	{
+		plane_n.normalize();
+		float plane_d = -Vec3f::dot(plane_n, plane_p);
+		float ad = Vec3f::dot(lineStart, plane_n);
+		float bd = Vec3f::dot(lineEnd, plane_n);
+		float t = (-plane_d - ad) / (bd - ad);
+		Vec3f lineStartToEnd = lineEnd - lineStart;
+		Vec3f lineToIntersect = lineStartToEnd * t;
+		return lineStart + lineToIntersect;
 	}
 
-	int triangle_clip_against_plane(Vec3f _plane_p, Vec3f _plane_n, Triangle& _in_tri, Triangle& _out_tri1, Triangle& _out_tri2) {
-		// Make sure plane normal is normalized
-		_plane_n.normalize();
-		
-		// return signed shortest distance from point to plane
-		auto dist = [&](Vec3f& p) {
+	int triangle_clip_against_plane(Vec3f plane_p, Vec3f plane_n, Triangle& in_tri, Triangle& out_tri1, Triangle& out_tri2) {
+		// Make sure plane normal is indeed normal
+		plane_n.normalize();
+
+		// Return signed shortest distance from point to plane, plane normal must be normalised
+		auto dist = [&](Vec3f& p)
+		{
 			Vec3f n = p.get_normalized();
-			return (_plane_n.x * p.x + _plane_n.y * p.y + _plane_n.z * p.z - Vec3f::dot(_plane_n, _plane_p));
+			return (plane_n.x * p.x + plane_n.y * p.y + plane_n.z * p.z - Vec3f::dot(plane_n, plane_p));
 		};
 
-		// create temp storage arrays to classify points either side of plane
-		// if dist sign is positive, point lies on "inside" the plane
-		Vec3f* inside_points[3]; int inside_point_count = 0;
-		Vec3f* outside_points[3]; int outside_point_count = 0;
+		// Create two temporary storage arrays to classify points either side of plane
+		// If distance sign is positive, point lies on "inside" of plane
+		Vec3f* inside_points[3];  int nInsidePointCount = 0;
+		Vec3f* outside_points[3]; int nOutsidePointCount = 0;
 
+		// Get signed distance of each point in triangle to plane
+		float d0 = dist(in_tri.p[0]);
+		float d1 = dist(in_tri.p[1]);
+		float d2 = dist(in_tri.p[2]);
 
-		// Get signed dist of each point in triangle
-		float d0 = dist(_in_tri.p[0]);
-		float d1 = dist(_in_tri.p[1]);
-		float d2 = dist(_in_tri.p[2]);
+		if (d0 >= 0) { inside_points[nInsidePointCount++] = &in_tri.p[0]; }
+		else { outside_points[nOutsidePointCount++] = &in_tri.p[0]; }
+		if (d1 >= 0) { inside_points[nInsidePointCount++] = &in_tri.p[1]; }
+		else { outside_points[nOutsidePointCount++] = &in_tri.p[1]; }
+		if (d2 >= 0) { inside_points[nInsidePointCount++] = &in_tri.p[2]; }
+		else { outside_points[nOutsidePointCount++] = &in_tri.p[2]; }
 
-		if (d0 >= 0) { inside_points[inside_point_count++] = &_in_tri.p[0]; }
-		else { outside_points[outside_point_count++] = &_in_tri.p[0]; }
-		if (d0 >= 1) { inside_points[inside_point_count++] = &_in_tri.p[1]; }
-		else { outside_points[outside_point_count++] = &_in_tri.p[1]; }
-		if (d0 >= 2) { inside_points[inside_point_count++] = &_in_tri.p[2]; }
-		else { outside_points[outside_point_count++] = &_in_tri.p[2]; }
+		// Now classify triangle points, and break the input triangle into 
+		// smaller output triangles if required. There are four possible
+		// outcomes...
 
-		// classify the triangle points
+		if (nInsidePointCount == 0)
+		{
+			// All points lie on the outside of plane, so clip whole triangle
+			// It ceases to exist
 
-		if (inside_point_count == 0) {
-			// all triangle points are outside plane, so reject it
-			return 0; // return nothing
+			return 0; // No returned triangles are valid
 		}
 
+		if (nInsidePointCount == 3)
+		{
+			// All points lie on the inside of plane, so do nothing
+			// and allow the triangle to simply pass through
+			out_tri1 = in_tri;
 
-		if (inside_point_count == 3) {
-			// all triangle points are inside plane, so do nothing with it
-			_out_tri1 = _in_tri;
-			return 1; // return the same triangle
+			return 1; // Just the one returned original triangle is valid
 		}
 
-		if (inside_point_count == 1 && outside_point_count == 2) {
-			// triangles should be clipped, as two points lie outside the clipping plane, return a smaller triangle
-			
-			// copy color info
-			_out_tri1.color = _in_tri.color;
+		if (nInsidePointCount == 1 && nOutsidePointCount == 2)
+		{
+			// Triangle should be clipped. As two points lie outside
+			// the plane, the triangle simply becomes a smaller triangle
 
-			// inside point is valid so keep that
-			_out_tri1.p[0] = _in_tri.p[0];
+			// Copy appearance info to new triangle
+			//out_tri1.color = in_tri.color;
+			out_tri1.color = sf::Color::Blue;
 
-			// two new points are created where the lines intersect the clipping plane
-			_out_tri1.p[1] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[0]);
-			_out_tri1.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[1]);
+			// The inside point is valid, so keep that...
+			out_tri1.p[0] = *inside_points[0];
 
-			return 1;
+			// but the two new points are at the locations where the 
+			// original sides of the triangle (lines) intersect with the plane
+			out_tri1.p[1] = vector_intersect_plane(plane_p, plane_n, *inside_points[0], *outside_points[0]);
+			out_tri1.p[2] = vector_intersect_plane(plane_p, plane_n, *inside_points[0], *outside_points[1]);
+
+			return 1; // Return the newly formed single triangle
 		}
 
-		if (inside_point_count == 2 && outside_point_count == 1) {
-			// create a quad
+		if (nInsidePointCount == 2 && nOutsidePointCount == 1)
+		{
+			// Triangle should be clipped. As two points lie inside the plane,
+			// the clipped triangle becomes a "quad". Fortunately, we can
+			// represent a quad with two new triangles
 
-			// copy color to new triangles
-			_out_tri1.color = _in_tri.color;
-			_out_tri2.color = _in_tri.color;
+			// Copy appearance info to new triangles
+			//out_tri1.color = in_tri.color;
+			out_tri1.color = sf::Color::Green;
+			out_tri2.color = sf::Color::Red;
 
-			// first triangle
-			_out_tri1.p[0] = *inside_points[0];
-			_out_tri1.p[1] = *inside_points[1];
-			_out_tri1.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[0], *outside_points[0]);
+			//out_tri2.color = in_tri.color;
 
-			// second triangle
-			_out_tri2.p[0] = *inside_points[0];
-			_out_tri2.p[1] = _out_tri1.p[0];
-			_out_tri2.p[2] = vector_intersect_plane(_plane_p, _plane_n, *inside_points[1], *outside_points[0]);
+			// The first triangle consists of the two inside points and a new
+			// point determined by the location where one side of the triangle
+			// intersects with the plane
+			out_tri1.p[0] = *inside_points[0];
+			out_tri1.p[1] = *inside_points[1];
+			out_tri1.p[2] = vector_intersect_plane(plane_p, plane_n, *inside_points[0], *outside_points[0]);
 
-			return 2;
+			// The second triangle is composed of one of he inside points, a
+			// new point determined by the intersection of the other side of the 
+			// triangle and the plane, and the newly created point above
+			out_tri2.p[0] = *inside_points[1];
+			out_tri2.p[1] = out_tri1.p[2];
+			out_tri2.p[2] = vector_intersect_plane(plane_p, plane_n, *inside_points[1], *outside_points[0]);
+
+			return 2; // Return two newly formed triangles which form a quad
 		}
 	}
 

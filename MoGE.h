@@ -209,7 +209,6 @@ namespace momo {
 	struct Triangle {
 		momo::Vec3f p[3];
 		sf::Color color = sf::Color::White;
-		sf::Color final_color;
 
 		Triangle copy();
 		void print();

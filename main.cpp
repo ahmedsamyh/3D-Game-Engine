@@ -3,18 +3,10 @@
 #include "MoGE.h"
 #include <vector>
 #include <algorithm>
+#include <list>
 
 using namespace momo;
 
-
-struct DirectionalLight {
-	Vec3f dir;
-	sf::Color color;
-
-	DirectionalLight() {
-		color = sf::Color::White;
-	}
-};
 
 class GameEngine3D : public MoGE {
 private:
@@ -22,10 +14,10 @@ private:
 	Matrix4x4 mat_projection;
 	Vec3f camera;
 	Vec3f look_dir;
+	Vec3f light_dir;
 	float yaw = 0.f;
 	float not_yaw = 0.0f;
 	float sensivity = 0.5;
-	DirectionalLight light;
 	float theta_x = 0.0f;
 	float theta_y = 0.0f;
 	float theta_z = 0.0f;
@@ -61,8 +53,7 @@ public:
 		theta_x = 0.0f;
 		theta_y = 0.0f;
 		theta_z = 0.0f;
-		light.dir.z = -1.0f;
-		light.color = sf::Color::Red;
+		light_dir.z = -1.0f;
 	}
 
 	void custom_init() override {
@@ -98,9 +89,15 @@ public:
 			float speed = 10.0f;
 			// elavate
 			camera.y += ((keys[KEY::E].held) - (keys[KEY::Q].held)) * speed * delta;
+
+			Vec3f right = Vec3f::cross({ 0,1,0 }, look_dir).get_normalized() * speed * delta;
+
 			// strafe left and right
-			camera.x += ((keys[KEY::D].held) - (keys[KEY::A].held)) * speed * delta;
-			
+			if (keys[KEY::D].held)
+				camera += right;
+			if (keys[KEY::A].held)
+				camera -= right;
+
 			// forward and backward
 			Vec3f forward = look_dir * speed * delta;
 
@@ -121,12 +118,6 @@ public:
 				theta_y += delta * 2.0f;
 				theta_z += delta * 3.0f;
 			}
-
-			// set light position to mouse position
-			light.dir.x = ((mouse.pos.x / screen_width) * 2.0f) - 1.0f;
-			light.dir.y = ((mouse.pos.y / screen_height) * 2.0f) - 1.0f;
-			light.dir.normalize();
-
 			// Rainbow light
 			/*if (RAINBOW_LIGHT) {
 				light.color.r += 1.0f; light.color.r %= 256;
@@ -165,7 +156,7 @@ public:
 		Matrix4x4 mat_camera_rot = Matrix4x4::rotationY(yaw);
 		look_dir = Vec3f::mult_matrix(target, mat_camera_rot);
 		target = camera + look_dir;
-		
+
 		Matrix4x4 mat_camera = Matrix4x4::point_at(camera, target, up);
 
 		// Make view matrix from camera
@@ -195,12 +186,13 @@ public:
 				// Clip triangles {can form 2 triangles}
 				int clipped_triangles = 0;
 				Triangle clipped[2];
-				clipped_triangles = triangle_clip_against_plane({ 0.0f, 0.0f, 2.1f }, { 0.0f, 0.0f, 1.0f }, tri_viewed, clipped[0], clipped[1]);
+				clipped_triangles = triangle_clip_against_plane({ 0.0f, 0.0f, 0.1f }, { 0.0f, 0.0f, 1.0f }, tri_viewed, clipped[0], clipped[1]);
 
 				for (int n = 0; n < clipped_triangles; n++) {
 
 					// Project 2D -> 3D
 					tri_projected = Triangle::mult_matrix(clipped[n], mat_projection, true);
+					tri_projected.color = clipped[n].color;
 
 					// Scale into view
 					tri_projected *= Vec3f(1.0f, -1.0f, 0.0f);
@@ -208,12 +200,12 @@ public:
 					tri_projected *= 0.5f; tri_projected *= momo::Vec3f((float)screen_width, (float)screen_height, 0);
 
 					// Calculate color
-					float color = light.dir.dot(normal);
+					float color = light_dir.dot(normal);
 					color += 1.0f;
 					color *= 0.5f;
-					tri_projected.final_color.r = interpolate(light.color.r, tri_projected.color.r, 0.5) * color;
-					tri_projected.final_color.g = interpolate(light.color.g, tri_projected.color.g, 0.5) * color;
-					tri_projected.final_color.b = interpolate(light.color.b, tri_projected.color.b, 0.5) * color;
+					tri_projected.color.r *= color;
+					tri_projected.color.g *= color;
+					tri_projected.color.b *= color;
 
 					tri_to_raster.push_back(tri_projected);
 				}
@@ -224,19 +216,42 @@ public:
 		std::sort(tri_to_raster.begin(), tri_to_raster.end(), [](Triangle& t1, Triangle& t2){
 				float z1 = (t1.p[0].z + t1.p[1].z + t1.p[2].z) / 3.0f;
 				float z2 = (t2.p[0].z + t2.p[1].z + t2.p[2].z) / 3.0f;
-				return z1 > z2;
+				return z1 < z2;
 			});
 
 
 
 
 		// Draw the triangles
-		for (auto& tri_projected : tri_to_raster) {
-			// Filled
-			draw_triangle_filled(tri_projected.p[0], tri_projected.p[1], tri_projected.p[2], tri_projected.final_color);
+		for (auto& tri_raster : tri_to_raster) {
+			Triangle clipped[2];
+			std::list<Triangle> list_triangles;
+			list_triangles.push_back(tri_raster);
+			int new_triangles = 1;
 
-			// Wireframe
-			draw_triangle(tri_projected.p[0], tri_projected.p[1], tri_projected.p[2]);
+			for (int p = 0; p < 4; p++) {
+				int tris_to_add = 0;
+				while (new_triangles > 0) {
+					Triangle test = list_triangles.front();
+					list_triangles.pop_front();
+					new_triangles--;
+
+					switch (p) {
+					case 0: tris_to_add = triangle_clip_against_plane({ 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+					case 1: tris_to_add = triangle_clip_against_plane({ 0.0f, (float)screen_height - 1, 0.0f }, { 0.0f, -1.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+					case 2: tris_to_add = triangle_clip_against_plane({ 0.0f, 0.0f, 0.0f }, { 1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+					case 3: tris_to_add = triangle_clip_against_plane({ (float)screen_width-1, 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f }, test, clipped[0], clipped[1]); break;
+					}
+
+					for (int w = 0; w < tris_to_add; w++)
+						list_triangles.push_back(clipped[w]);
+				}
+				new_triangles = list_triangles.size();
+			}
+
+			for (auto& t : list_triangles)
+				draw_triangle_filled(t.p[0], t.p[1], t.p[2], t.color);
+
 		}
 
 
