@@ -103,8 +103,11 @@ namespace momo {
 			// the plane, the triangle simply becomes a smaller triangle
 
 			// Copy appearance info to new triangle
-			//out_tri1.color = in_tri.color;
-			out_tri1.color = sf::Color::Blue;
+			out_tri1.color = in_tri.color;
+
+
+			/// TEMP
+			//out_tri1.color = sf::Color::Red;
 
 			// The inside point is valid, so keep that...
 			out_tri1.p[0] = *inside_points[0];
@@ -124,11 +127,13 @@ namespace momo {
 			// represent a quad with two new triangles
 
 			// Copy appearance info to new triangles
-			//out_tri1.color = in_tri.color;
-			out_tri1.color = sf::Color::Green;
-			out_tri2.color = sf::Color::Red;
+			out_tri1.color = in_tri.color;
 
-			//out_tri2.color = in_tri.color;
+			out_tri2.color = in_tri.color;
+
+			/// TEMP
+			/*out_tri1.color = sf::Color::Green;
+			out_tri2.color = sf::Color::Blue;*/
 
 			// The first triangle consists of the two inside points and a new
 			// point determined by the location where one side of the triangle

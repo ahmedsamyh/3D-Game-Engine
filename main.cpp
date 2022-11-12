@@ -60,7 +60,7 @@ public:
 		fixed_mouse = true;
 		win.setMouseCursorVisible(false);
 
-		mesh_obj.load_from_obj("axis.obj");
+		mesh_obj.load_from_obj("mountains.obj");
 
 		// Projection Matrix
 		mat_projection = Matrix4x4::projection(0.1f, 1000.0f, 90, (float)screen_height/(float)screen_width);
