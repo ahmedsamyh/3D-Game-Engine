@@ -36,6 +36,16 @@ namespace momo {
 		return (_rad / PI) * 180;
 	}
 
+	float randf(float _min, float _max) {
+		float v = rand() % 101; // 0 - 100
+		v /= 100.0f; // 0.0f - 1.0f
+		return _min + (v * (_max-_min));
+	}
+
+	int randi(int _min, int _max) {
+		return std::floor(randf(_min, _max));
+	}
+
 	Vec3f vector_intersect_plane(Vec3f& plane_p, Vec3f& plane_n, Vec3f& lineStart, Vec3f& lineEnd)
 	{
 		plane_n.normalize();
@@ -167,12 +177,15 @@ namespace momo {
 	}
 
 	bool MoGE::init(std::string _name, int _w, int _h) {
+		// random seed for random function
+		std::srand(unsigned int(time(0)));
+
 		game_name = _name;
 		screen_width = _w;
 		screen_height = _h;
 
 		// Create the Render Window
-		win.create(sf::VideoMode(screen_width, screen_height), game_name);
+		win.create(sf::VideoMode(screen_width, screen_height), game_name, sf::Style::Titlebar | sf::Style::Close);
 
 		// Set the fps to the default refresh rate of the monitor
 		win.setVerticalSyncEnabled(true);
@@ -192,7 +205,9 @@ namespace momo {
 		}
 
 		custom_init();
-
+		
+		view = win.getDefaultView();
+		win.setView(view);
 
 		return true;
 	}
@@ -261,6 +276,27 @@ namespace momo {
 			prev_mouse.held[1] = mouse.held[1];
 			prev_mouse.pos = { (float)sf::Mouse::getPosition(win).x, (float)sf::Mouse::getPosition(win).y };
 		}
+	}
+
+	Vec2f MoGE::screen_center() {
+		Vec2f m;
+		m.x = win.getDefaultView().getCenter().x;
+		m.y = win.getDefaultView().getCenter().y;
+		return m;
+	}
+
+	void MoGE::rotate_screen(float _deg) {
+		view.setRotation(_deg);
+		win.setView(view);
+	}
+
+	float MoGE::get_screen_rotation() {
+		return view.getRotation();
+	}
+
+	void MoGE::set_screen_scale(Vec2f _scale) {
+		view.setViewport({ 0, 0, _scale.x, _scale.y });
+		win.setView(view);
 	}
 
 	void MoGE::draw_line(float _x1, float _y1, float _x2, float _y2, sf::Color _color) {
@@ -361,23 +397,30 @@ namespace momo {
 			current_sprite.setOrigin(0, 0);
 	}
 
-	Sprite::Sprite(TextureManager* _tm, std::string _name, int _total_frames) {
-		init(_tm, _name, _total_frames);
+	void Sprite::set_color(sf::Color _col) {
+		current_sprite.setColor(_col);
 	}
 
-	void Sprite::init(TextureManager* _tm, std::string _name, int _total_frames) {
+	Sprite::Sprite(TextureManager* _tm, int _width, int _height, std::string _name, int _total_frames) {
+		init(_tm, _width, _height, _name, _total_frames);
+	}
+
+	void Sprite::init(TextureManager* _tm, int _width, int _height, std::string _name, int _total_frames) {
 		if (_tm == nullptr)
 			return;
 		name = _name;
 		total_frames = _total_frames;
-		for (int i = 0; i < total_frames; i++) {
-			_tm->load_texture(_name + std::to_string(i), _name + std::to_string(i));
-			frames.push_back(_tm->get_texture(_name + std::to_string(i)));
-		}
-		current_sprite.setTexture(*frames[0]);
+		width = _width; height = _height;
+		_tm->load_texture(_name, _name);
+		current_sprite.setTexture(*_tm->get_texture(_name));
+		current_sprite.setTextureRect(sf::IntRect({ current_frame * width, 0 }, { width, height }));
 		set_origin_middle(true);
-		size.x = _tm->get_texture(_name + "0")->getSize().x;
-		size.y = _tm->get_texture(_name + "0")->getSize().y;
+		size.x = _tm->get_texture(_name)->getSize().x;
+		size.y = _tm->get_texture(_name)->getSize().y;
+	}
+
+	void Sprite::set_scale(float _x, float _y) {
+		current_sprite.setScale(_x, _y);
 	}
 
 	void Sprite::draw(sf::RenderWindow& _win, sf::RenderStates _render_states) {
@@ -393,7 +436,7 @@ namespace momo {
 					current_frame = 0;
 				else
 					current_frame++;
-				current_sprite.setTexture(*frames[current_frame]);
+				current_sprite.setTextureRect(sf::IntRect({ current_frame * width, 0 }, { width, height }));
 			}
 		}
 		// Auto update pos
@@ -785,7 +828,7 @@ namespace momo {
 		mat_proj.m[1][1] = fov_rad;
 		mat_proj.m[2][2] = far / (far - near);
 		mat_proj.m[3][2] = (-far * near) / (far - near);
-		mat_proj.m[2][3] = 1.0f;
+		mat_proj.m[2][3] = -1.0f;
 		return mat_proj;
 	}
 
@@ -820,7 +863,7 @@ namespace momo {
 
 	Matrix4x4 Matrix4x4::point_at(Vec3f& _pos, Vec3f& _target, Vec3f& _up){
 		// Calculate new forward direction
-		Vec3f new_forward = _target - _pos;
+		Vec3f new_forward = _pos - _target;
 		new_forward.normalize();
 
 		// Calculate new up direction
@@ -833,12 +876,11 @@ namespace momo {
 
 		// Construct Matrix
 		Matrix4x4 matrix;
-		matrix.m[0][0] = new_right.x;	matrix.m[0][1] = new_right.y;	matrix.m[0][2] = new_right.z;	matrix.m[0][3] = 0.0f;
-		matrix.m[1][0] = new_up.x;		matrix.m[1][1] = new_up.y;		matrix.m[1][2] = new_up.z;		matrix.m[1][3] = 0.0f;
-		matrix.m[2][0] = new_forward.x;	matrix.m[2][1] = new_forward.y;	matrix.m[2][2] = new_forward.z;	matrix.m[2][3] = 0.0f;
-		matrix.m[3][0] = _pos.x;		matrix.m[3][1] = _pos.y;		matrix.m[3][2] = _pos.z;		matrix.m[3][3] = 1.0f;
+		matrix.m[0][0] = new_right.x;	matrix.m[0][1] = new_right.y;	matrix.m[0][2] = new_right.z;	matrix.m[0][3] = 0.f;
+		matrix.m[1][0] = new_up.x;		matrix.m[1][1] = new_up.y;		matrix.m[1][2] = new_up.z;		matrix.m[1][3] = 0.f;
+		matrix.m[2][0] = new_forward.x; matrix.m[2][1] = new_forward.y; matrix.m[2][2] = new_forward.z; matrix.m[2][3] = 0.f;
+		matrix.m[3][0] = _pos.x;		matrix.m[3][1] = _pos.y;		matrix.m[3][2] = _pos.z;		matrix.m[3][3] = 1.f;
 		return matrix;
-
 	}
 
 	Matrix4x4 Matrix4x4::quick_inverse(Matrix4x4& m){
@@ -1040,5 +1082,25 @@ namespace momo {
 	void Triangle::div(Triangle _t){
 		for (int i = 0; i < 3; i++)
 			p[i].div(_t.p[i]);
+	}
+
+	// CollisionBox -----------------------------------------------------------------------------------------------------------------
+	CollisionBox::CollisionBox(float _r, Vec2f _pos) {
+		init(_r, _pos);
+	}
+
+	void CollisionBox::init(float _r, Vec2f _pos) {
+		radius = _r;
+		pos = _pos;
+	}
+
+	bool CollisionBox::intersect(CollisionBox _other) {
+		for (int& layer : lookat_layers)
+			for (int& other_layer : _other.layers)
+				if (layer == other_layer) {
+					float dist = Vec2f::dist(this->pos, _other.pos);
+					return (dist < (this->radius + _other.radius));
+				}
+		return false;
 	}
 }

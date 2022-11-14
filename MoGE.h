@@ -2,7 +2,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include <strstream>
+#include <sstream>
 #include "SFML/Graphics.hpp"
 namespace momo {
 	// Declarations --------------------------------------------------------------------------------------------------------------
@@ -11,6 +11,7 @@ namespace momo {
 	class Vec3f;
 	class Vec2f;
 	class Matrix4x4;
+	class CollisionBox;
 	struct Triangle;
 
 	// Constants -----------------------------------------------------------------------------------------------------------------
@@ -23,8 +24,12 @@ namespace momo {
 	float deg2rad(float _deg);
 	Vec2f interpolate(Vec2f _from, Vec2f _to, float _t);
 	float interpolate(float _from, float _to, float _t);
+	float randf(float _min, float _max);
+	int randi(int _min, int _max);
+
 	Vec3f vector_intersect_plane(Vec3f& _plane_p, Vec3f& _plane_n, Vec3f& _line_start, Vec3f& _line_end);
 	int triangle_clip_against_plane(Vec3f _plane_p, Vec3f _plane_n, Triangle& _in_tri, Triangle& _out_tri1, Triangle& _out_tri2);
+
 	// Matrix --------------------------------------------------------------------------------------------------------------------
 	class Matrix4x4 {
 	public:
@@ -209,6 +214,7 @@ namespace momo {
 	struct Triangle {
 		momo::Vec3f p[3];
 		sf::Color color = sf::Color::White;
+		sf::Color final_color;
 
 		Triangle copy();
 		void print();
@@ -287,7 +293,7 @@ namespace momo {
 
 				//std::cout << line;
 
-				std::strstream s;
+				std::stringstream s;
 				s << line;
 				char junk;
 
@@ -329,6 +335,7 @@ namespace momo {
 		int screen_width = 0;
 		int screen_height = 0;
 		sf::RenderWindow win;
+		sf::View view;
 		float delta = 0.0f;
 		int FPS = 0;
 		sf::Clock clock;
@@ -385,6 +392,12 @@ namespace momo {
 
 		void run();
 
+		// utility functions
+		Vec2f screen_center();
+		void rotate_screen(float _deg);
+		float get_screen_rotation();
+		void set_screen_scale(Vec2f _scale);
+
 		// drawing functions
 		void draw_line(float _x1, float _y1, float _x2, float _y2, sf::Color _color=sf::Color::White);
 		void draw_line(Vec2f _v1, Vec2f _v2, sf::Color _color = sf::Color::White);
@@ -413,7 +426,6 @@ namespace momo {
 	// Sprite --------------------------------------------------------------------------------------------------------------------
 	class Sprite {
 	private:
-		std::vector<sf::Texture*> frames;
 		int total_frames = 0;
 		int current_frame = 0;
 		sf::Sprite current_sprite;
@@ -424,21 +436,53 @@ namespace momo {
 		bool origin_middle = true;
 		Vec2f prev_pos;
 		float prev_rotation = 0.f;
+		int width = 16;
+		int height = 16;
 	public:
 		Vec2f pos;
 		float rotation = 0.f; // in degrees
 		Vec2f size;
 
+		// getters
+		sf::Color get_color() { return current_sprite.getColor(); };
+		momo::Vec2f get_scale() { return { current_sprite.getScale().x, current_sprite.getScale().y }; };
+
 		// setters
 		void set_origin_middle(bool _o);
+		void set_scale(float _x, float _y);
+		void set_color(sf::Color _col);
 
-		Sprite(TextureManager* _tm=nullptr, std::string _name="default string name", int _total_frames=1);
+		Sprite(TextureManager* _tm=nullptr, int _width=16, int _height=16, std::string _name="default string name", int _total_frames=1);
 		~Sprite() {};
 
-		void init(TextureManager* _tm, std::string _name="default string name", int _total_frames = 1);
+		void init(TextureManager* _tm, int _width, int _height, std::string _name="default string name", int _total_frames = 1);
 
 		void draw(sf::RenderWindow& _win, sf::RenderStates _render_states=sf::RenderStates::Default);
 
 		void update(float _delta);
+	};
+
+	// CollisionBox -----------------------------------------------------------------------------------------------------------------
+	class CollisionBox {
+	public:
+		float radius = 16.0f;
+		Vec2f pos;
+		enum LAYER {
+			PLAYER,
+			PLAYER_BULLET,
+			ENEMY_BULLET,
+			ENEMY,
+			ITEM,
+		};
+		std::vector<int> lookat_layers;
+		std::vector<int> layers;
+
+	public:
+		CollisionBox(float _r = 16.0f, Vec2f _pos={0.0f,0.0f});
+		~CollisionBox() {};
+
+		void init(float _r, Vec2f _pos);
+
+		bool intersect(CollisionBox _other);
 	};
 }
