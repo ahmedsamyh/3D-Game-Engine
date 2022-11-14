@@ -13,6 +13,7 @@ namespace momo {
 	class Matrix4x4;
 	class CollisionBox;
 	struct Triangle;
+	struct TextureCoord;
 
 	// Constants -----------------------------------------------------------------------------------------------------------------
 	const double PI = 3.14159265358979;
@@ -63,6 +64,12 @@ namespace momo {
 		static Matrix4x4 point_at(Vec3f& _pos, Vec3f& _target, Vec3f& _up);
 
 		static Matrix4x4 quick_inverse(Matrix4x4& _mat); // only for rotation/translation matrices
+	};
+
+	// TextureCoord
+	struct TextureCoord {
+		float u = 0.0f;
+		float v = 0.0f;
 	};
 
 	// Vec3f ---------------------------------------------------------------------------------------------------------------------
@@ -213,6 +220,7 @@ namespace momo {
 	// Triangle ------------------------------------------------------------------------------------------------------------------
 	struct Triangle {
 		momo::Vec3f p[3];
+		momo::TextureCoord t[3];
 		sf::Color color = sf::Color::White;
 		sf::Color final_color;
 

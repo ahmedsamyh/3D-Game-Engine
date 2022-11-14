@@ -24,7 +24,6 @@ private:
 	Vec3f translater;
 	bool DRAW_DEBUG = true;
 	bool AUTO_ROTATE = false;
-	bool RAINBOW_LIGHT = false;
 
 	Vec3f matrix_vector_multiply(Vec3f& _v, Matrix4x4& _m) {
 		Vec3f o;
@@ -60,7 +59,7 @@ public:
 		fixed_mouse = true;
 		win.setMouseCursorVisible(false);
 
-		mesh_obj.load_from_obj("mountains.obj");
+		mesh_obj.load_from_obj("cube.obj");
 
 		// Projection Matrix
 		mat_projection = Matrix4x4::projection(0.1f, 1000.0f, 90, (float)screen_height/(float)screen_width);
@@ -76,8 +75,6 @@ public:
 		if (keys[KEY::R].pressed)
 			AUTO_ROTATE = !AUTO_ROTATE;
 
-		if (keys[KEY::T].pressed)
-			RAINBOW_LIGHT = !RAINBOW_LIGHT;
 
 		// Reset
 		if (keys[KEY::Escape].pressed) {
@@ -118,12 +115,6 @@ public:
 				theta_y += delta * 2.0f;
 				theta_z += delta * 3.0f;
 			}
-			// Rainbow light
-			/*if (RAINBOW_LIGHT) {
-				light.color.r += 1.0f; light.color.r %= 256;
-				light.color.g += 1.0f; light.color.g %= 256;
-				light.color.b += 1.0f; light.color.b %= 256;
-			}*/
 		}
 
 
@@ -167,6 +158,9 @@ public:
 			Triangle tri_projected, tri_transformed, tri_viewed;
 
 			tri_transformed = Triangle::mult_matrix(tri, mat_world);
+			tri_transformed.t[0] = tri.t[0];
+			tri_transformed.t[1] = tri.t[1];
+			tri_transformed.t[2] = tri.t[2];
 
 			// Get normal of triangle to see which one i can see
 			Vec3f normal, line1, line2;
@@ -182,6 +176,9 @@ public:
 
 				// Convert world space -> view space
 				tri_viewed = Triangle::mult_matrix(tri_transformed, mat_view);
+				tri_viewed.t[0] = tri_transformed.t[0];
+				tri_viewed.t[1] = tri_transformed.t[1];
+				tri_viewed.t[2] = tri_transformed.t[2];
 
 				// Clip triangles {can form 2 triangles}
 				int clipped_triangles = 0;
@@ -220,8 +217,6 @@ public:
 			});
 
 
-
-
 		// Draw the triangles
 		for (auto& tri_raster : tri_to_raster) {
 			Triangle clipped[2];
@@ -251,7 +246,6 @@ public:
 
 			for (auto& t : list_triangles)
 				draw_triangle_filled(t.p[0], t.p[1], t.p[2], t.color);
-
 		}
 
 

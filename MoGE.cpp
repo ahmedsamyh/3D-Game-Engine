@@ -828,7 +828,7 @@ namespace momo {
 		mat_proj.m[1][1] = fov_rad;
 		mat_proj.m[2][2] = far / (far - near);
 		mat_proj.m[3][2] = (-far * near) / (far - near);
-		mat_proj.m[2][3] = -1.0f;
+		mat_proj.m[2][3] = 1.0f;
 		return mat_proj;
 	}
 
